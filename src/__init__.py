@@ -1,0 +1,1 @@
+"""Chaos Game application package."""
