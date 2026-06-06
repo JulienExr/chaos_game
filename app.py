@@ -49,7 +49,10 @@ for key, value in DEFAULTS.items():
 st.title("Chaos Game / Polygon Fractals")
 
 with st.sidebar:
-    st.header("Parameters")
+    st.header("Controls")
+    st.caption("Tune the fractal, then render a static image or play the reveal animation.")
+
+    st.subheader("Geometry")
 
     shape = st.selectbox("Choose a shape", list(SHAPES.keys()), key="shape")
     ratio = st.slider(
@@ -57,6 +60,7 @@ with st.sidebar:
         min_value=0.01,
         max_value=0.99,
         step=0.01,
+        help="How far each new point moves toward the selected vertex.",
         key="ratio",
     )
     point_count = st.slider(
@@ -64,34 +68,50 @@ with st.sidebar:
         min_value=1_000,
         max_value=200_000,
         step=1_000,
+        help="Higher values create a denser fractal but take longer to render.",
         key="point_count",
     )
-    show_vertices = st.checkbox("Show vertices", key="show_vertices")
+
+    st.subheader("Display")
     color_by_vertex = st.checkbox(
         "Color points by selected vertex",
         key="color_by_vertex",
     )
+    show_vertices = st.checkbox("Show vertex guides", key="show_vertices")
+
+    with st.expander("Animation", expanded=False):
+        st.caption("These settings only affect the Animate button.")
+        animation_steps = st.slider(
+            "Frames",
+            min_value=10,
+            max_value=200,
+            step=10,
+            key="animation_steps",
+        )
+        frame_delay = st.slider(
+            "Frame delay (seconds)",
+            min_value=0.00,
+            max_value=0.20,
+            step=0.01,
+            key="frame_delay",
+        )
 
     st.divider()
 
-    animation_steps = st.slider(
-        "Animation frames",
-        min_value=10,
-        max_value=200,
-        step=10,
-        key="animation_steps",
+    generate_clicked = st.button(
+        "Generate",
+        type="primary",
+        use_container_width=True,
     )
-    frame_delay = st.slider(
-        "Delay between frames (seconds)",
-        min_value=0.00,
-        max_value=0.20,
-        step=0.01,
-        key="frame_delay",
-    )
+    left_button, right_button = st.columns(2)
+    with left_button:
+        animate_clicked = st.button("Animate", use_container_width=True)
+    with right_button:
+        st.button("Reset", on_click=reset_app, use_container_width=True)
 
-    generate_clicked = st.button("Generate", use_container_width=True)
-    animate_clicked = st.button("Animate", use_container_width=True)
-    st.button("Reset", on_click=reset_app, use_container_width=True)
+    st.caption(
+        f"{shape} - {point_count:,} points - ratio {ratio:.2f}"
+    )
 
 side_count = SHAPES[shape]
 vertices = regular_polygon(side_count)
