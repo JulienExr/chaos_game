@@ -119,19 +119,57 @@ def save_progression():
 
 def save_vertex_coloring():
     np.random.seed(13)
-    vertices = regular_polygon(5)
-    points, choices = generate_chaos_game(vertices, ratio=0.5, point_count=70_000)
+    ratio = 2 / 3
+    point_count = 150_000
+    vertices = regular_polygon(6)
+    points, choices = generate_chaos_game(
+        vertices,
+        ratio=ratio,
+        point_count=point_count,
+    )
     fig = draw_fractal(
         points=points,
         vertex_choices=choices,
         vertices=vertices,
-        shape_name="Pentagon",
-        ratio=0.5,
+        shape_name="Hexagon",
+        ratio=ratio,
         total_points=len(points),
         show_vertices=True,
         color_by_vertex=True,
     )
     fig.savefig(MEDIA_DIR / "vertex_coloring.png", bbox_inches="tight", dpi=180)
+    plt.close(fig)
+
+
+def save_ratio_comparison():
+    vertices = regular_polygon(3)
+    ratios = [0.40, 0.50, 0.58, 0.67]
+    point_count = 70_000
+    colors = vertex_colors(len(vertices))
+
+    fig, axes = plt.subplots(2, 2, figsize=(8, 8), dpi=170)
+
+    for ax, ratio in zip(axes.ravel(), ratios):
+        np.random.seed(100 + int(ratio * 100))
+        points, choices = generate_chaos_game(
+            vertices,
+            ratio=ratio,
+            point_count=point_count,
+        )
+        contraction = 1 - ratio
+        ax.scatter(
+            points[:, 0],
+            points[:, 1],
+            s=0.035,
+            c=colors[choices],
+            alpha=0.82,
+            linewidths=0,
+        )
+        setup_axis(ax, f"r = {ratio:.2f}, c = {contraction:.2f}")
+
+    fig.suptitle("Changing the ratio changes the contraction scale", y=0.98)
+    fig.tight_layout()
+    fig.savefig(MEDIA_DIR / "ratio_comparison.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -174,6 +212,7 @@ def main():
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     save_iteration_rule()
     save_progression()
+    save_ratio_comparison()
     save_vertex_coloring()
     save_animation()
 
