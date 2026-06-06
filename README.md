@@ -1,8 +1,8 @@
 # Chaos Game / Polygon Fractals
 
 An interactive Streamlit application for exploring the Chaos Game on regular
-polygons. The app can render the point cloud directly, color each point by the
-vertex selected at that step, and animate the construction so the fractal
+polygons. The app renders the point cloud, colors each generated point by the
+vertex selected at that step, and can animate the construction so the fractal
 appears progressively.
 
 ![Chaos Game animation](docs/media/chaos_game_emergence.gif)
@@ -25,50 +25,141 @@ scripts/generate_readme_media.py
 docs/media/                    generated README images and GIF
 ```
 
-## Mathematical Idea
+## The Chaos Game Rule
 
 Choose a polygon with vertices:
 
-```text
+$$
 V = {v_1, v_2, ..., v_k}
-```
+$$
 
-Start from an initial point `x_0`, often the centroid of the polygon. At each
+Start from an initial point $P_0$, often the centroid of the polygon. At each
 iteration:
 
-1. choose one vertex `v_i` at random;
-2. move the current point toward that vertex by a fixed ratio `r`;
+1. choose one vertex $S$ at random;
+2. move the current point toward $S$ by a fixed ratio $r$;
 3. draw the new point.
 
-The recurrence is:
+The update rule is:
 
-```text
-x_{n+1} = (1 - r) x_n + r v_i
-```
+$$P_{n+1} = (1 - r) P_n + r S$$
 
-Here, `r` is the ratio controlled by the slider in the app. With a triangle and
-`r = 0.5`, this process produces the Sierpinski triangle.
+For example, with $r = 2/3$, the update is:
+
+$$P_{n+1} = (1/3) P_n + (2/3) S$$
+
+This is exactly the same rule: the new point keeps $1/3$ of the old position and
+takes $2/3$ of the selected vertex position.
 
 ![One Chaos Game step](docs/media/iteration_rule.png)
 
 ## Why a Fractal Appears
 
-Each possible vertex defines a contraction map:
+For a fixed selected vertex $S$, the map
 
-```text
-f_i(x) = (1 - r)x + r v_i
+$$
+f_S(P) = (1 - r) P + r S
+$$
+
+is a contraction. If two starting points are separated by a distance $D$, their
+images under the same map are separated by:
+
+```math
+c \cdot D
 ```
 
-Because `0 < r < 1`, each map pulls points closer to one vertex. Repeated random
-application of these contractions sends the point toward the attractor of the
-iterated function system. The randomness changes the order in which the points
-are visited, but the long-term shape is stable.
+where the contraction factor is:
 
-For the triangle with `r = 0.5`, the contractions map the full triangle into
-three smaller triangles. The middle region is never reached, then the same gap
-structure repeats at smaller scales.
+$$
+c = 1 - r
+$$
+
+Repeatedly choosing random vertices means repeatedly applying one contraction
+from a finite family of contractions. This is an iterated function system. The
+randomness changes the order in which points are visited, but the long-term
+object is the attractor of that system.
+
+For the classic triangle with $r = 1/2$, the process produces the Sierpinski
+triangle. The full triangle is mapped into three half-size copies, leaving the
+middle gap empty, then the same structure repeats at smaller and smaller scales.
 
 ![Sierpinski triangle progression](docs/media/sierpinski_progression.png)
+
+## Choosing the Ratio
+
+The ratio $r$ controls how far each step jumps toward the chosen vertex. It also
+controls the contraction scale $c = 1 - r$.
+
+Small $r$ values make small moves. The copies overlap heavily, so the image can
+look dense, soft, or almost filled.
+
+Values near the classical ratio often reveal clean self-similar structure. For a
+triangle, $r = 1/2$ gives the Sierpinski triangle.
+
+Large $r$ values jump closer to the selected vertex. The contraction scale is
+smaller, so copies separate more strongly and the image becomes more sparse.
+
+![Ratio comparison](docs/media/ratio_comparison.png)
+
+There is no universally best ratio. Good values depend on the number of
+vertices and the kind of structure you want:
+
+```text
+triangle:  r = 0.50 is the classical Sierpinski case
+square:    r around 0.50 often overlaps; other rules are usually needed for a clean carpet
+pentagon:  r around 0.50 can produce star-like internal structure
+hexagon:   r = 2/3 gives c = 1/3, a useful scale for six separated copies
+```
+
+The important point is that $r$ is the movement ratio, while $c = 1 - r$ is the
+geometric scaling factor used in dimension formulas.
+
+## Fractal Dimension
+
+A smooth line has dimension $1$; a filled region has dimension $2$. A fractal
+attractor often lands between these values. For a self-similar set made of $N$
+non-overlapping copies, each scaled by the same factor $c$, the similarity
+dimension $d$ satisfies:
+
+```math
+N c^d = 1
+```
+
+Solving for $d$ gives:
+
+```math
+d = log(N) / log(1 / c)
+```
+
+For the Sierpinski triangle:
+
+```math
+N = 3
+c = 1/2
+d = log(3) / log(2) ~= 1.585
+```
+
+For a six-copy construction with scale $c = 1/3$:
+
+```math
+N = 6
+c = 1/3
+d = log(6) / log(3) ~= 1.631
+```
+
+This corresponds to the kind of update:
+
+```math
+P_{n+1} = (1/3) P_n + (2/3) S
+```
+
+because $r = 2/3$, so $c = 1 - r = 1/3$.
+
+This formula is exact for clean self-similar constructions where the scaled
+copies do not overlap in a dimension-changing way. In the general polygon Chaos
+Game, overlap can happen. When copies overlap strongly, the simple formula may
+overestimate the true dimension, and the attractor may become closer to a filled
+two-dimensional region.
 
 ## Color by Selected Vertex
 
