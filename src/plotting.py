@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+POINT_SIZE = 0.035
+POINT_ALPHA = 0.82
+
+
 def vertex_colors(vertex_count):
     color_map = plt.get_cmap("tab10" if vertex_count <= 10 else "hsv")
     return color_map(np.linspace(0, 1, vertex_count, endpoint=False))
@@ -31,11 +35,20 @@ def draw_fractal(
         ax.scatter(
             visible_points[:, 0],
             visible_points[:, 1],
-            s=0.1,
+            s=POINT_SIZE,
             c=colors[visible_choices],
+            alpha=POINT_ALPHA,
+            linewidths=0,
         )
     else:
-        ax.scatter(visible_points[:, 0], visible_points[:, 1], s=0.1, c="black")
+        ax.scatter(
+            visible_points[:, 0],
+            visible_points[:, 1],
+            s=POINT_SIZE,
+            c="black",
+            alpha=POINT_ALPHA,
+            linewidths=0,
+        )
 
     if show_vertices:
         ax.scatter(
