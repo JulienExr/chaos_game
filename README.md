@@ -7,6 +7,10 @@ that step, and can animate the construction so the fractal appears progressively
 
 ![Chaos Game animation](docs/media/chaos_game_emergence.gif)
 
+## Live Demo
+
+Try the app online: https://chaos-game.streamlit.app/
+
 ## Run the App
 
 ```bash
