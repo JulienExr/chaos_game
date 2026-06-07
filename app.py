@@ -52,12 +52,12 @@ def pixel_to_point(px, py):
 
 
 def draw_manual_canvas(vertices):
-    image = Image.new("RGB", (CANVAS_SIZE, CANVAS_SIZE), "#fbfaf7")
+    image = Image.new("RGBA", (CANVAS_SIZE, CANVAS_SIZE), "#fbfaf7ff")
     draw = ImageDraw.Draw(image)
 
-    grid_color = "#e8e2d8"
-    axis_color = "#c8beb0"
-    border_color = "#9f9588"
+    grid_color = "#e8e2d8ff"
+    axis_color = "#c8beb0ff"
+    border_color = "#9f9588ff"
 
     for i in range(9):
         offset = int(i * (CANVAS_SIZE - 1) / 8)
@@ -69,9 +69,14 @@ def draw_manual_canvas(vertices):
     draw.line([(0, center), (CANVAS_SIZE, center)], fill=axis_color, width=1)
     draw.rectangle([(0, 0), (CANVAS_SIZE - 1, CANVAS_SIZE - 1)], outline=border_color, width=2)
 
-    if len(vertices) > 1:
+    if len(vertices) > 2:
         pixels = [point_to_pixel(vertex) for vertex in vertices]
-        draw.line(pixels, fill="#667085", width=2)
+        draw.line(pixels[:-1], fill="#667085cc", width=2)
+
+    if len(vertices) > 1:
+        last_edge = [point_to_pixel(vertices[-2]), point_to_pixel(vertices[-1])]
+        draw.line(last_edge, fill="#2f80ed55", width=6)
+        draw.line(last_edge, fill="#2f80edaa", width=2)
 
     for index, vertex in enumerate(vertices, start=1):
         x, y = point_to_pixel(vertex)
@@ -97,12 +102,17 @@ DEFAULTS = {
     "point_count": 150_000,
     "show_vertices": True,
     "color_by_vertex": True,
+    "constraint": "None",
+    "jump_size": 1,
     "animation_steps": 60,
     "frame_delay": 0.03,
+    "manual_canvas_version": 0,
 }
 
 
 def reset_app():
+    previous_canvas_version = st.session_state.get("manual_canvas_version", 0)
+
     for key, value in DEFAULTS.items():
         st.session_state[key] = deepcopy(value)
 
@@ -113,10 +123,45 @@ def reset_app():
     st.session_state.pop("last_ratio", None)
     st.session_state.pop("last_point_count", None)
     st.session_state.pop("last_manual_click", None)
+    st.session_state.manual_canvas_version = previous_canvas_version + 1
+
+
+def reset_manual_click_state():
+    st.session_state.last_manual_click = None
+    st.session_state.manual_canvas_version = st.session_state.get("manual_canvas_version", 0) + 1
 
 
 def apply_vertex_source_defaults():
     st.session_state.ratio = SOURCE_DEFAULT_RATIOS[st.session_state.vertex_source]
+
+    if st.session_state.vertex_source == "Star":
+        st.session_state.star_points = DEFAULTS["star_points"]
+        st.session_state.star_inner_radius = DEFAULTS["star_inner_radius"]
+
+
+def available_constraints(vertex_count):
+    constraints = ["None"]
+
+    if vertex_count >= 2:
+        constraints.append("No same vertex twice")
+
+    if vertex_count >= 4:
+        constraints.append("No neighboring vertex")
+        constraints.append("Only jumps of N")
+
+    return constraints
+
+
+def constraint_label(constraint, jump_size):
+    if constraint == "Only jumps of N":
+        return f"Only jumps of {jump_size}"
+    return constraint
+
+
+def shape_label(shape, constraint, jump_size):
+    if constraint == "None":
+        return shape
+    return f"{shape} - {constraint_label(constraint, jump_size)}"
 
 
 def save_fractal(points, vertex_choices, vertices, shape, ratio, point_count):
@@ -188,16 +233,16 @@ with st.sidebar:
         shape = "Manual points"
         vertices = current_manual_vertices()
         undo_clicked = st.button("Undo last point", use_container_width=True)
-        clear_clicked = st.button("Clear points", use_container_width=True)
+        clear_clicked = st.button("Clear all points", use_container_width=True)
 
         if undo_clicked and st.session_state.manual_points:
             st.session_state.manual_points = st.session_state.manual_points[:-1]
-            st.session_state.pop("last_manual_click", None)
+            reset_manual_click_state()
             vertices = current_manual_vertices()
 
         if clear_clicked:
             st.session_state.manual_points = []
-            st.session_state.pop("last_manual_click", None)
+            reset_manual_click_state()
             vertices = current_manual_vertices()
 
     has_enough_vertices = len(vertices) >= 2
@@ -220,6 +265,33 @@ with st.sidebar:
         help="Higher values create a denser fractal but take longer to render.",
         key="point_count",
     )
+
+    st.subheader("Constraints")
+    constraint_options = available_constraints(len(vertices))
+    if st.session_state.constraint not in constraint_options:
+        st.session_state.constraint = "None"
+
+    constraint = st.selectbox(
+        "Transition rule",
+        constraint_options,
+        help="Restrict which vertex can be chosen after the previous one.",
+        key="constraint",
+    )
+    max_jump = max(1, len(vertices) // 2)
+    if st.session_state.jump_size > max_jump:
+        st.session_state.jump_size = max_jump
+
+    if constraint == "Only jumps of N":
+        jump_size = st.slider(
+            "Jump size",
+            min_value=1,
+            max_value=max_jump,
+            step=1,
+            help="From vertex i, only vertices i-N and i+N are allowed.",
+            key="jump_size",
+        )
+    else:
+        jump_size = st.session_state.jump_size
 
     st.subheader("Display")
     color_by_vertex = st.checkbox(
@@ -264,11 +336,14 @@ with st.sidebar:
         st.button("Reset", on_click=reset_app, use_container_width=True)
 
     st.caption(
-        f"{shape} - {len(vertices)} vertices - {point_count:,} points - ratio {ratio:.2f}"
+        f"{shape} - {len(vertices)} vertices - {point_count:,} points - ratio {ratio:.2f} - {constraint_label(constraint, jump_size)}"
     )
 
 if vertex_source == "Manual points":
     st.subheader("Manual vertex placement")
+    st.caption(
+        "Click the canvas to add attractor points. Do not click the first point again to close the shape; the app uses the points directly."
+    )
 
     if streamlit_image_coordinates is None:
         st.error(
@@ -277,7 +352,7 @@ if vertex_source == "Manual points":
     else:
         clicked = streamlit_image_coordinates(
             draw_manual_canvas(vertices),
-            key="manual_canvas",
+            key=f"manual_canvas_{st.session_state.manual_canvas_version}",
             width=CANVAS_SIZE,
         )
 
@@ -299,8 +374,21 @@ if vertex_source == "Manual points":
 image = st.empty()
 
 if generate_clicked or animate_clicked:
-    points, vertex_choices = generate_chaos_game(vertices, ratio, point_count)
-    save_fractal(points, vertex_choices, vertices, shape, ratio, point_count)
+    points, vertex_choices = generate_chaos_game(
+        vertices,
+        ratio,
+        point_count,
+        constraint=constraint,
+        jump_size=jump_size,
+    )
+    save_fractal(
+        points,
+        vertex_choices,
+        vertices,
+        shape_label(shape, constraint, jump_size),
+        ratio,
+        point_count,
+    )
 
     if animate_clicked:
         progress = st.progress(0)
@@ -311,7 +399,7 @@ if generate_clicked or animate_clicked:
                 points=points,
                 vertex_choices=vertex_choices,
                 vertices=vertices,
-                shape_name=shape,
+                shape_name=shape_label(shape, constraint, jump_size),
                 ratio=ratio,
                 total_points=point_count,
                 show_vertices=show_vertices,
@@ -327,7 +415,7 @@ if generate_clicked or animate_clicked:
             points=points,
             vertex_choices=vertex_choices,
             vertices=vertices,
-            shape_name=shape,
+            shape_name=shape_label(shape, constraint, jump_size),
             ratio=ratio,
             total_points=point_count,
             show_vertices=show_vertices,
