@@ -242,6 +242,52 @@ def save_vertex_set_modes():
     plt.close(fig)
 
 
+def save_constraint_comparison():
+    examples = [
+        ("Square\nno constraint", regular_polygon(4), 0.50, "None", 1),
+        ("Square\nno repeat", regular_polygon(4), 0.50, "No same vertex twice", 1),
+        ("Pentagon\nno neighbors", regular_polygon(5), 0.50, "No neighboring vertex", 1),
+        ("Hexagon\njumps of 2", regular_polygon(6), 0.38, "Only jumps of N", 2),
+    ]
+
+    fig, axes = plt.subplots(2, 2, figsize=(8, 8), dpi=170)
+
+    for index, (title, vertices, ratio, constraint, jump_size) in enumerate(examples):
+        np.random.seed(500 + index)
+        points, choices = generate_chaos_game(
+            vertices,
+            ratio=ratio,
+            point_count=90_000,
+            constraint=constraint,
+            jump_size=jump_size,
+        )
+        colors = vertex_colors(len(vertices))
+        ax = axes.ravel()[index]
+        ax.scatter(
+            points[:, 0],
+            points[:, 1],
+            s=0.035,
+            c=colors[choices],
+            alpha=0.82,
+            linewidths=0,
+        )
+        ax.scatter(
+            vertices[:, 0],
+            vertices[:, 1],
+            s=22,
+            facecolors="none",
+            edgecolors=colors,
+            linewidths=1.0,
+            alpha=0.75,
+        )
+        setup_axis(ax, title)
+
+    fig.suptitle("Transition constraints change the allowed address sequences", y=0.98)
+    fig.tight_layout()
+    fig.savefig(MEDIA_DIR / "constraint_comparison.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def save_animation():
     np.random.seed(21)
     vertices = regular_polygon(3)
@@ -283,6 +329,7 @@ def main():
     save_progression()
     save_ratio_comparison()
     save_vertex_set_modes()
+    save_constraint_comparison()
     save_vertex_coloring()
     save_animation()
 
