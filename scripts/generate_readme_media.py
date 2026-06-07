@@ -17,7 +17,7 @@ import numpy as np
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.chaos_game import generate_chaos_game, regular_polygon
+from src.chaos_game import generate_chaos_game, regular_polygon, star_polygon
 from src.plotting import draw_fractal, vertex_colors
 
 
@@ -31,14 +31,17 @@ def setup_axis(ax, title=None):
 def save_iteration_rule():
     vertices = regular_polygon(3)
     colors = vertex_colors(len(vertices))
-    current = np.array([-0.42, -0.18])
-    chosen_index = 1
-    chosen_vertex = vertices[chosen_index]
+    start = np.array([0.0, 0.0])
+    chosen_indices = [0, 1]
     ratio = 0.5
-    next_point = (1 - ratio) * current + ratio * chosen_vertex
 
-    fig, ax = plt.subplots(figsize=(7, 5), dpi=160)
-    setup_axis(ax, "One Chaos Game step")
+    first_vertex = vertices[chosen_indices[0]]
+    second_vertex = vertices[chosen_indices[1]]
+    first_point = (1 - ratio) * start + ratio * first_vertex
+    second_point = (1 - ratio) * first_point + ratio * second_vertex
+
+    fig, ax = plt.subplots(figsize=(7.5, 5.4), dpi=160)
+    setup_axis(ax, "Two Chaos Game steps")
     ax.plot(
         np.append(vertices[:, 0], vertices[0, 0]),
         np.append(vertices[:, 1], vertices[0, 1]),
@@ -54,34 +57,44 @@ def save_iteration_rule():
         edgecolors=colors,
         linewidths=2.0,
     )
-    ax.scatter(*current, s=55, color="0.15", label="current point")
-    ax.scatter(*next_point, s=55, color="#d9480f", label="next point")
-    ax.plot(
-        [current[0], chosen_vertex[0]],
-        [current[1], chosen_vertex[1]],
-        color="#d9480f",
-        linewidth=1.4,
-        alpha=0.45,
-    )
-    ax.annotate(
-        "",
-        xy=next_point,
-        xytext=current,
-        arrowprops={"arrowstyle": "->", "color": "#d9480f", "lw": 1.8},
-    )
-    ax.text(current[0] - 0.13, current[1] - 0.09, "$x_n$", fontsize=13)
-    ax.text(next_point[0] + 0.03, next_point[1] + 0.03, "$x_{n+1}$", fontsize=13)
-    ax.text(
-        chosen_vertex[0] + 0.04,
-        chosen_vertex[1] + 0.04,
-        "$v_i$",
-        fontsize=13,
-        color=colors[chosen_index],
-    )
+
+    path_points = [start, first_point, second_point]
+    path_colors = ["#d9480f", "#2f80ed"]
+    chosen_vertices = [first_vertex, second_vertex]
+
+    ax.scatter(*start, s=55, color="0.15")
+    ax.scatter(*first_point, s=55, color=path_colors[0])
+    ax.scatter(*second_point, s=55, color=path_colors[1])
+
+    for source, target, chosen_vertex, color in zip(
+        path_points,
+        path_points[1:],
+        chosen_vertices,
+        path_colors,
+    ):
+        ax.plot(
+            [source[0], chosen_vertex[0]],
+            [source[1], chosen_vertex[1]],
+            color=color,
+            linewidth=1.2,
+            alpha=0.28,
+        )
+        ax.annotate(
+            "",
+            xy=target,
+            xytext=source,
+            arrowprops={"arrowstyle": "->", "color": color, "lw": 1.8},
+        )
+
+    ax.text(start[0] - 0.11, start[1] - 0.12, "$P_0$", fontsize=13)
+    ax.text(first_point[0] + 0.04, first_point[1] - 0.08, "$P_1$", fontsize=13)
+    ax.text(second_point[0] - 0.13, second_point[1] + 0.04, "$P_2$", fontsize=13)
+    ax.text(first_vertex[0] + 0.04, first_vertex[1] + 0.04, "$S_1$", fontsize=13, color=colors[chosen_indices[0]])
+    ax.text(second_vertex[0] - 0.20, second_vertex[1] + 0.04, "$S_2$", fontsize=13, color=colors[chosen_indices[1]])
     ax.text(
         -0.95,
         -1.10,
-        "$x_{n+1} = (1-r)x_n + r v_i$",
+        "$P_{n+1} = (1-r)P_n + rS$",
         fontsize=14,
         color="0.15",
     )
@@ -173,6 +186,62 @@ def save_ratio_comparison():
     plt.close(fig)
 
 
+def save_vertex_set_modes():
+    examples = [
+        ("Regular triangle", regular_polygon(3), 0.50),
+        ("Star vertices", star_polygon(5, inner_radius=0.45), 0.75),
+        (
+            "Manual points",
+            np.array(
+                [
+                    [-0.95, 0.72],
+                    [-0.36, -0.90],
+                    [0.18, 0.48],
+                    [0.92, -0.55],
+                    [0.68, 0.86],
+                ],
+                dtype=float,
+            ),
+            0.62,
+        ),
+    ]
+
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.8), dpi=170)
+
+    for index, (title, vertices, ratio) in enumerate(examples):
+        np.random.seed(300 + index)
+        points, choices = generate_chaos_game(
+            vertices,
+            ratio=ratio,
+            point_count=80_000,
+        )
+        colors = vertex_colors(len(vertices))
+        ax = axes[index]
+        ax.scatter(
+            points[:, 0],
+            points[:, 1],
+            s=0.035,
+            c=colors[choices],
+            alpha=0.82,
+            linewidths=0,
+        )
+        ax.scatter(
+            vertices[:, 0],
+            vertices[:, 1],
+            s=22,
+            facecolors="none",
+            edgecolors=colors,
+            linewidths=1.0,
+            alpha=0.75,
+        )
+        setup_axis(ax, f"{title}\nr = {ratio:.2f}")
+
+    fig.suptitle("The rule works with any finite set of attractor points", y=1.04)
+    fig.tight_layout()
+    fig.savefig(MEDIA_DIR / "vertex_set_modes.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def save_animation():
     np.random.seed(21)
     vertices = regular_polygon(3)
@@ -213,6 +282,7 @@ def main():
     save_iteration_rule()
     save_progression()
     save_ratio_comparison()
+    save_vertex_set_modes()
     save_vertex_coloring()
     save_animation()
 
