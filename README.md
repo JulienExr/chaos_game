@@ -1,9 +1,9 @@
 # Chaos Game / Polygon Fractals
 
-An interactive Streamlit application for exploring the Chaos Game on regular
-polygons. The app renders the point cloud, colors each generated point by the
-vertex selected at that step, and can animate the construction so the fractal
-appears progressively.
+An interactive Streamlit application for exploring the Chaos Game with regular
+polygons, star-shaped vertex sets, and manually placed attractor points. The app
+renders the point cloud, colors each generated point by the vertex selected at
+that step, and can animate the construction so the fractal appears progressively.
 
 ![Chaos Game animation](docs/media/chaos_game_emergence.gif)
 
@@ -25,15 +25,41 @@ scripts/generate_readme_media.py
 docs/media/                    generated README images and GIF
 ```
 
+## App Controls
+
+The left panel controls the vertex set, rendering options, and animation
+settings. The main area displays either the generated fractal or the manual
+placement canvas.
+
+Available vertex sources:
+
+```text
+Regular polygon   triangle, square, pentagon, hexagon, ...
+Star              alternating outer and inner vertices
+Manual points     click on the canvas to place attractor points
+```
+
+The app starts with `150,000` points by default. The star mode defaults to:
+
+```text
+tips = 5
+inner radius = 0.45
+ratio = 0.75
+```
+
+Manual mode starts empty. Click on the placement canvas to add vertices, then use
+`Generate` or `Animate`. `Undo last point` removes the latest clicked point, and
+`Clear points` resets the manual set.
+
 ## The Chaos Game Rule
 
-Choose a polygon with vertices:
+Choose a set of attractor points:
 
 $$
 V = {v_1, v_2, ..., v_k}
 $$
 
-Start from an initial point $P_0$, often the centroid of the polygon. At each
+Start from an initial point $P_0$, often the centroid of the vertices. At each
 iteration:
 
 1. choose one vertex $S$ at random;
@@ -51,7 +77,13 @@ $$P_{n+1} = (1/3) P_n + (2/3) S$$
 This is exactly the same rule: the new point keeps $1/3$ of the old position and
 takes $2/3$ of the selected vertex position.
 
-![One Chaos Game step](docs/media/iteration_rule.png)
+The same rule is applied repeatedly. The first two updates are:
+
+$$P_1 = (1 - r) P_0 + r S_1$$
+
+$$P_2 = (1 - r) P_1 + r S_2$$
+
+![Two Chaos Game steps](docs/media/iteration_rule.png)
 
 ## Why a Fractal Appears
 
@@ -82,8 +114,72 @@ object is the attractor of that system.
 For the classic triangle with $r = 1/2$, the process produces the Sierpinski
 triangle. The full triangle is mapped into three half-size copies, leaving the
 middle gap empty, then the same structure repeats at smaller and smaller scales.
+The same contraction idea applies to stars and manually placed points, although
+the resulting attractor may have less familiar symmetry.
 
 ![Sierpinski triangle progression](docs/media/sierpinski_progression.png)
+
+## Beyond Regular Polygons
+
+The Chaos Game does not fundamentally depend on regular polygons. It only needs
+a finite set of attractor points and a rule that moves the current point toward
+one of them. A regular polygon is just the most symmetric case.
+
+That is why the same app can use:
+
+```text
+regular polygon vertices
+star vertices
+manually placed points
+```
+
+The visual symmetry changes, but the mechanism is the same: choose one target
+point, apply a contraction toward it, draw the result, and repeat.
+
+![Vertex set modes](docs/media/vertex_set_modes.png)
+
+## IFS Theory
+
+The mathematical object behind this is an iterated function system, usually
+called an IFS. An IFS is a finite family of contraction maps:
+
+```math
+{f_1, f_2, ..., f_N}
+```
+
+Each map takes points from the plane back into the plane, and each one must
+shrink distances by some factor smaller than $1$. In the app, the maps are:
+
+```math
+f_i(P) = (1 - r)P + r v_i
+```
+
+where $v_i$ is one of the chosen vertices or manually placed points.
+
+Hutchinson's theorem says that such a finite family of contractions has a unique
+non-empty compact attractor $A$. It is the set that satisfies:
+
+```math
+A = f_1(A) union f_2(A) union ... union f_N(A)
+```
+
+Informally: the final fractal is the set that is rebuilt from contracted copies
+of itself. The Chaos Game works because random iteration of the maps almost
+always lands on this attractor after enough steps. The early points depend on
+the starting point, but the long-term cloud does not.
+
+The maps do not have to be simple "move toward a point" maps. More general IFS
+fractals use affine transformations:
+
+```math
+f_i(P) = A_i P + b_i
+```
+
+Here, $A_i$ is a contractive matrix and $b_i$ is a translation vector. The matrix
+can scale, rotate, shear, or flatten space, as long as it shrinks distances
+overall. This is how classic examples such as the Barnsley fern or fractal trees
+are built: each branch, leaflet, or stem is produced by repeatedly applying one
+of several contractive affine maps.
 
 ## Choosing the Ratio
 
@@ -109,6 +205,8 @@ triangle:  r = 0.50 is the classical Sierpinski case
 square:    r around 0.50 often overlaps; other rules are usually needed for a clean carpet
 pentagon:  r around 0.50 can produce star-like internal structure
 hexagon:   r = 2/3 gives c = 1/3, a useful scale for six separated copies
+star:      r around 0.75 often gives a crisp, separated structure
+manual:    start near 0.50-0.70, then adjust based on overlap
 ```
 
 The important point is that $r$ is the movement ratio, while $c = 1 - r$ is the
