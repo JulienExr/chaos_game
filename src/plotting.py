@@ -4,6 +4,7 @@ import numpy as np
 
 POINT_SIZE = 0.035
 POINT_ALPHA = 0.82
+FIGURE_SIZE = (6.2, 6.2)
 
 
 def vertex_colors(vertex_count):
@@ -29,7 +30,7 @@ def draw_fractal(
     visible_choices = vertex_choices[:visible_count]
     colors = vertex_colors(len(vertices))
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=FIGURE_SIZE)
 
     if color_by_vertex:
         ax.scatter(
@@ -71,8 +72,10 @@ def draw_fractal(
     ax.set_aspect("equal")
     ax.axis("off")
     ax.set_title(
-        f"{shape_name} - ratio = {ratio:.2f} - {visible_count:,}/{total_points:,} points"
+        f"{shape_name} - ratio = {ratio:.2f} - {visible_count:,}/{total_points:,} points",
+        fontsize=10,
     )
+    fig.tight_layout(pad=0.4)
 
     return fig
 
