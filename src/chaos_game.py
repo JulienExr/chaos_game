@@ -19,6 +19,14 @@ def regular_polygon(side_count, radius=1.0, center=(0, 0)):
     return np.column_stack((x, y))
 
 
+def star_polygon(point_count, outer_radius=1.0, inner_radius=0.45, center=(0, 0)):
+    angles = np.linspace(0, 2 * np.pi, point_count * 2, endpoint=False)
+    radii = np.where(np.arange(point_count * 2) % 2 == 0, outer_radius, inner_radius)
+    x = center[0] + radii * np.cos(angles)
+    y = center[1] + radii * np.sin(angles)
+    return np.column_stack((x, y))
+
+
 def generate_chaos_game(vertices, ratio, point_count, start_point=None):
     if start_point is None:
         current = np.mean(vertices, axis=0)
